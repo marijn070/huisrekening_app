@@ -69,7 +69,7 @@ class AccountType(str, Enum):
 
 
 class AccountBase(SQLModel):
-    name: str = Field(max_length=100)
+    name: str = Field(max_length=100, unique=True)
     type: AccountType
 
 
@@ -99,8 +99,8 @@ class AccountPublicWithTransactions(AccountPublic):
 
 
 class RoomMateBase(SQLModel):
-    name: str
-    email: str | None = Field(default=None, max_length=100)
+    name: str = Field(max_length=100, unique=True)
+    email: str | None = Field(default=None, max_length=100, unique=True)
     profile_pic_url: str | None = Field(default=None, max_length=200)
 
 
@@ -112,6 +112,10 @@ class RoomMate(RoomMateBase, table=True):
 
 
 class RoomMateCreate(RoomMateBase):
+    pass
+
+
+class RoomMateUpdate(RoomMateBase):
     pass
 
 
