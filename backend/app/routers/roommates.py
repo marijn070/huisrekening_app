@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from ..db import get_session
 from ..models import (
@@ -14,7 +14,7 @@ from ..models import (
 router = APIRouter(prefix="/roommates", tags=["roommates"])
 
 
-@router.post("/roommates", response_model=RoomMatePublic)
+@router.post("", response_model=RoomMatePublic)
 def create_roommate(
     *,
     session: Session = Depends(get_session),
@@ -31,6 +31,15 @@ def create_roommate(
     session.refresh(db_roommate)
 
     return db_roommate
+
+
+@router.get("", response_model=list[RoomMatePublic])
+def read_roommates(
+    *,
+    session: Session = Depends(get_session),
+):
+    db_roommates = session.exec(select(RoomMate)).all()
+    return db_roommates
 
 
 @router.get("/{roommate_id}", response_model=RoomMatePublic)
@@ -68,7 +77,7 @@ def update_roommate(
     return db_roommate
 
 
-@router.delete("/{roommate_id}", response_model=RoomMatePublic)
+@router.delete("/{roommate_id}")
 def delete_roommate(
     *,
     session: Session = Depends(get_session),
@@ -77,7 +86,17 @@ def delete_roommate(
     db_roommate = session.get(RoomMate, roommate_id)
     if not db_roommate:
         raise HTTPException(status_code=404, detail="Roommate not found")
+    # try to delete the roommates account
+    if db_roommate.account:
+        try:
+            session.delete(db_roommate.account)
+        except Exception as e:
+            session.rollback()
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to delete roommate account, maybe there are still transactions in it: {e}",
+            )
     session.delete(db_roommate)
     session.commit()
 
-    return db_roommate
+    return {"ok": True}
