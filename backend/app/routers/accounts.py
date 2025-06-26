@@ -1,5 +1,4 @@
 from datetime import date
-from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
@@ -10,10 +9,11 @@ from ..models import (
     AccountCreate,
     AccountPublic,
     AccountUpdate,
-    Split,
     SplitCreate,
-    Transaction,
     TransactionPublic,
+)
+from ..services.services import (
+    create_transaction_with_known_account_from_splits,
 )
 
 router = APIRouter(prefix="/accounts", tags=["accounts"])
@@ -87,30 +87,13 @@ def create_transaction_from_account(
     if not account_db:
         raise HTTPException(status_code=404, detail="Account not found")
 
-    transaction = Transaction(
-        transaction_date=transaction_date, description=description, splits=[]
+    return create_transaction_with_known_account_from_splits(
+        session=session,
+        account=account_db,
+        splits=splits,
+        transaction_date=transaction_date,
+        description=description,
     )
-
-    total: Decimal = Decimal("0")
-    for split in splits:
-        split_db = Split.model_validate(split)
-        if not session.get(Account, split_db.account_id):
-            raise HTTPException(status_code=404, detail="Account not found")
-        if split_db.account_id == account_db.id:
-            raise HTTPException(
-                status_code=400,
-                detail="Split account must be different from the transaction account",
-            )
-        total += split_db.amount
-        transaction.splits.append(split_db)
-
-    # add the split for the current account, to add up to zero
-    transaction.splits.append(Split(account_id=account_id, amount=-total))
-
-    session.add(transaction)
-    session.commit()
-    session.refresh(transaction)
-    return transaction
 
 
 @router.get(
