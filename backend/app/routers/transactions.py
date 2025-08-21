@@ -2,9 +2,27 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
 from ..db import get_session
-from ..models import Transaction, TransactionPublic, TransactionUpdate
+from ..models import (
+    Transaction,
+    TransactionCreate,
+    TransactionPublic,
+    TransactionUpdate,
+)
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
+
+
+@router.post("/", response_model=TransactionPublic)
+def create_transaction(
+    *,
+    session: Session = Depends(get_session),
+    transaction: TransactionCreate,
+):
+    db_transaction = Transaction.model_validate(transaction)
+    session.add(db_transaction)
+    session.commit()
+    session.refresh(db_transaction)
+    return db_transaction
 
 
 @router.patch("/{transaction_id}", response_model=TransactionPublic)
