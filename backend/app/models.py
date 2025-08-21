@@ -22,6 +22,10 @@ class Transaction(TransactionBase, table=True):
     )
 
 
+class TransactionCreate(TransactionBase):
+    pass
+
+
 class TransactionUpdate(TransactionBase):
     pass
 
@@ -79,7 +83,13 @@ class Account(AccountBase, table=True):
         back_populates="account", passive_deletes="all"
     )
 
-    room_mate: Optional["RoomMate"] = Relationship(back_populates="account")
+    roommate_id: int | None = Field(
+        default=None,
+        foreign_key="roommate.id",
+        unique=True,  # Enforce one-to-one relationship
+        ondelete="RESTRICT",
+    )
+    roommate: Optional["RoomMate"] = Relationship(back_populates="account")
 
 
 class AccountCreate(AccountBase):
@@ -100,15 +110,14 @@ class AccountPublicWithTransactions(AccountPublic):
 
 class RoomMateBase(SQLModel):
     name: str = Field(max_length=100, unique=True)
-    email: str | None = Field(default=None, max_length=100, unique=True)
-    profile_pic_url: str | None = Field(default=None, max_length=200)
+    email: str | None = Field(default=None, unique=True)
+    profile_pic_url: str | None = Field(default=None, max_length=1000)
 
 
 class RoomMate(RoomMateBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
 
-    account_id: int | None = Field(default=None, foreign_key="account.id")
-    account: Account = Relationship(back_populates="room_mate")
+    account: Optional["Account"] = Relationship(back_populates="roommate")
 
 
 class RoomMateCreate(RoomMateBase):
